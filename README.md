@@ -15,29 +15,6 @@ docker compose up -d --build
 - **Backend API (Swagger)**：`http://localhost:8000/docs`
 - **Neo4j Browser**：`http://localhost:7474`（账号 `neo4j` / 密码 `neo4j_password`）
 
-> 默认使用 **Mock LLM + 本地种子数据**，无需外网和 API Key 也能跑通完整闭环。
-
-## 端到端自测（可选）
-
-1) 生成任务：
-
-```bash
-curl -X POST http://localhost:8000/api/graph/generate ^
-  -H "content-type: application/json" ^
-  -d "{\"concept\":\"Entropy\",\"depth\":2,\"strict_check\":true}"
-```
-
-2) 查询任务状态（把 `JOB_ID` 换成上一步返回值）：
-
-```bash
-curl http://localhost:8000/api/job/JOB_ID
-```
-
-3) 查询图谱（Neo4j 持久化后）：
-
-```bash
-curl http://localhost:8000/api/graph/Entropy?depth=2&version=v1
-```
 
 ## 使用说明
 
@@ -45,16 +22,6 @@ curl http://localhost:8000/api/graph/Entropy?depth=2&version=v1
 2. 等待 Job 完成后会自动加载图谱
 3. 点击节点查看详情与证据；点击 Expand 进行二跳扩展
 4. 可导出 JSON
-
-## 配置（可选）
-
-你可以把 `env.example` 复制为你自己的环境变量配置（本仓库不创建以点开头的文件）：
-
-```bash
-copy env.example env.local
-```
-
-然后在 `docker-compose.yml` 里把相关环境变量替换为你的值（例如 OpenAI 兼容地址与 Key）。
 
 ## 项目结构
 
