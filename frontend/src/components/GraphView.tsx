@@ -183,13 +183,14 @@ export function GraphView(props: {
 
   const option = React.useMemo(() => {
     const data = props.nodes.map((n) => {
-      const isCentral = n.name === "Entropy" || n.domain === "Core";
+      const baseName = n.name.replace(/\s*\([^)]*\)\s*.*$/g, '').replace(/\s*in\s+[a-zA-Z\s]+(?:\([a-zA-Z\s]+\))?$/i, '');
+      const isCentral = baseName === "Entropy" || n.domain === "Core";
       const color = colorFor(n.domain);
       
       return {
         id: n.id,
-        name: n.name,
-        symbolSize: isCentral ? 55 : 28 + (n.confidence || 0) * 15,
+        name: `${baseName} (${n.domain})`,
+        symbolSize: isCentral ? 70 : 35 + (n.confidence || 0) * 20,
         itemStyle: {
           // 星球立体感：径向渐变
           color: new echarts.graphic.RadialGradient(0.3, 0.3, 1, [
@@ -201,27 +202,52 @@ export function GraphView(props: {
           shadowColor: color,
           borderWidth: 1,
           borderColor: "rgba(255,255,255,0.3)",
-          // 添加呼吸灯效果
+          // 添加丰富的动态效果
           emphasis: {
-            shadowBlur: isCentral ? 60 : 30,
-            shadowColor: color,
+            shadowBlur: isCentral ? 80 : 50,
+            shadowColor: `${color}80`, // 增加透明度
+            borderWidth: 3,
+            borderColor: color,
+            // 脉冲动画
             animation: {
               type: 'pulse',
               duration: 2000,
               easing: 'ease-in-out',
               loop: true
-            }
+            },
+            // 发光边框动画
+            animationDelay: 0,
+            animationDuration: 1000,
+            animationEasing: 'ease-out'
           }
         },
         label: {
           show: true,
-          position: "bottom",
-          distance: 10,
+          position: "inside",
           color: "#e5e7eb",
           fontSize: isCentral ? 14 : 11,
           fontWeight: isCentral ? "bold" : "normal",
           textShadowBlur: 4,
-          textShadowColor: color
+          textShadowColor: color,
+          align: "center",
+          verticalAlign: "middle",
+          emphasis: {
+            color: "#ffffff",
+            fontSize: isCentral ? 16 : 13,
+            fontWeight: "bold",
+            textShadowBlur: 10,
+            textShadowColor: `${color}FF`,
+            animation: {
+              type: 'scale',
+              duration: 300,
+              easing: 'ease-out'
+            }
+          }
+        },
+        emphasis: {
+          label: {
+            show: true
+          }
         },
         // 添加入场动画
         animationDelay: Math.random() * 1000,

@@ -51,8 +51,9 @@ export function RelationGraph({ selectedNode, nodes, edges }: RelationGraphProps
     const isSelected = node.id === selectedNode.id;
     return {
       id: node.id,
-      name: node.name,
-      symbolSize: isSelected ? 60 : 30,
+      name: node.name.replace(/\s*\([^\)]*\)\s*.*$/g, '')
+        .replace(/\s*in\s+[a-zA-Z\s]+(?:\([a-zA-Z\s]+\))?$/i, ''),
+      symbolSize: isSelected ? 80 : 40,
       itemStyle: {
         color: new echarts.graphic.RadialGradient(0.3, 0.3, 1, [
           { offset: 0, color: "#fff" },
@@ -62,26 +63,48 @@ export function RelationGraph({ selectedNode, nodes, edges }: RelationGraphProps
         shadowBlur: isSelected ? 40 : 15,
         shadowColor: colorFor(node.domain),
         emphasis: {
-          shadowBlur: isSelected ? 60 : 30,
-          shadowColor: colorFor(node.domain),
-          animation: { type: 'pulse', duration: 2000, easing: 'ease-in-out', loop: true }
+          shadowBlur: isSelected ? 80 : 50,
+          shadowColor: `${colorFor(node.domain)}80`, // 增加透明度
+          borderWidth: 3,
+          borderColor: colorFor(node.domain),
+          // 脉冲动画
+          animation: {
+            type: 'pulse',
+            duration: 2000,
+            easing: 'ease-in-out',
+            loop: true
+          },
+          // 发光边框动画
+          animationDelay: 0,
+          animationDuration: 1000,
+          animationEasing: 'ease-out'
         }
       },
       label: {
         show: true,
-        formatter: node.name,
+        formatter: `${node.name.replace(/\s*\([^\)]*\)\s*.*$/g, '').replace(/\s*in\s+[a-zA-Z\s]+(?:\([a-zA-Z\s]+\))?$/i, '')} (${node.domain})`,
+        position: "inside",
         color: "#ffffff",
         fontSize: isSelected ? 14 : 12,
-        fontWeight: isSelected ? 'bold' : 'normal'
+        fontWeight: isSelected ? 'bold' : 'normal',
+        align: "center",
+        verticalAlign: "middle"
       },
       emphasis: {
         label: {
           show: true,
-          formatter: `{b}\n{@domain}`,
+          formatter: `{b}\n${node.domain}`,
           color: "#ffffff",
           fontSize: isSelected ? 16 : 14,
           fontWeight: 'bold',
-          lineHeight: 20
+          lineHeight: 20,
+          textShadowBlur: 10,
+          textShadowColor: `${colorFor(node.domain)}FF`,
+          animation: {
+            type: 'scale',
+            duration: 300,
+            easing: 'ease-out'
+          }
         }
       },
       value: 1,
