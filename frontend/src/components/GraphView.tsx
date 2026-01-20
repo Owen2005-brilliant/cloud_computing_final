@@ -1,19 +1,20 @@
 import React from "react";
 import ReactECharts from "echarts-for-react";
+import * as echarts from "echarts";
 import type { Edge, Node } from "../api";
 
 const DOMAIN_COLORS: Record<string, string> = {
-  Core: "#fbbf24",
-  Mathematics: "#60a5fa",
+  Core: "#f59e0b", // 核心节点使用琥珀色
+  Mathematics: "#6366f1",
   Physics: "#a78bfa",
   "Computer Science": "#22d3ee",
   Biology: "#f472b6",
-  Economics: "#f59e0b",
+  Economics: "#fbbf24",
   Bridge: "#38bdf8"
 };
 
 function colorFor(domain: string): string {
-  return DOMAIN_COLORS[domain] || "#374151";
+  return DOMAIN_COLORS[domain] || "#94a3b8";
 }
 
 export function GraphView(props: {
@@ -27,223 +28,294 @@ export function GraphView(props: {
 }) {
   const chartRef = React.useRef<ReactECharts>(null);
 
+  // 粒子流动动画逻辑
   const updateEdgeFlow = React.useCallback(() => {
     if (!props.enableEdgeFlow) return;
     const chart = chartRef.current?.getEchartsInstance?.();
     if (!chart) return;
 
     try {
-      const model: any = chart.getModel?.();
-      const series: any = model?.getSeriesByIndex?.(0);
-      const data: any = series?.getData?.();
-      const count: number = data?.count?.() ?? 0;
-
+      const option = chart.getOption();
+      const series = (option.series as any[])?.[0] || {};
+      const nodes = series.data || [];
       const posById = new Map<string, { x: number; y: number }>();
-      for (let i = 0; i < count; i++) {
-        const id = data.getItemModel ? data.getItemModel(i)?.get("id") : data.getId?.(i);
-        const layout = data.getItemLayout(i);
-        const x = Array.isArray(layout) ? layout[0] : layout?.x;
-        const y = Array.isArray(layout) ? layout[1] : layout?.y;
-        if (id && typeof x === "number" && typeof y === "number") {
-          posById.set(String(id), { x, y });
+
+      nodes.forEach((node: any, index: number) => {
+        if (node.id) {
+          try {
+            const position = chart.convertToPixel({ seriesIndex: 0, dataIndex: index }, [0, 0]);
+            if (Array.isArray(position)) {
+              posById.set(String(node.id), { x: position[0], y: position[1] });
+            }
+          } catch {
+            posById.set(String(node.id), { x: 0, y: 0 });
+          }
         }
-      }
+      });
 
-      // Choose a small number of edges to animate (avoid perf issues)
-      let edgesToFlow = props.edges.filter((e) => e.relation === "bridges");
-      if (props.dimToPathEdgeIds && props.dimToPathEdgeIds.size) {
-        edgesToFlow = props.edges.filter((e) => props.dimToPathEdgeIds?.has(String(e.id ?? "")));
-      }
-      edgesToFlow = edgesToFlow.slice(0, 10);
-
+      let edgesToFlow = props.edges.slice(0, 30);
       const elements: any[] = [];
+
       edgesToFlow.forEach((e, idx) => {
         const s = posById.get(e.source);
         const t = posById.get(e.target);
         if (!s || !t) return;
-        const color = (e.flags || []).includes("conflict") ? "#f59e0b" : "#22d3ee";
+        const isConflict = (e.flags || []).includes("conflict");
+        const baseColor = isConflict ? "#ef4444" : "#22d3ee";
+        const secondaryColor = isConflict ? "#f87171" : "#38bdf8";
         const baseId = `flow:${e.id ?? `${e.source}-${e.target}-${idx}`}`;
+        
+        // 计算连线角度（弧度）
+        const angle = Math.atan2(t.y - s.y, t.x - s.x);
 
-        // 2 particles per edge for a richer look
-        for (let k = 0; k < 2; k++) {
+        // 增加粒子数量到3个，使流动更密集
+        for (let k = 0; k < 3; k++) {
           const id = `${baseId}:${k}`;
-          const duration = 1400 + (idx % 5) * 140 + k * 160;
-          const delay = (idx * 90 + k * 220) % 900;
           elements.push({
             id,
-            type: "circle",
+            type: "circle", // 改为圆形，更有科技感
             silent: true,
-            z: 50,
-            shape: { r: 2.4 },
-            style: { fill: color, opacity: 0.9, shadowBlur: 10, shadowColor: "rgba(34,211,238,0.75)" },
+            z: 100,
+            shape: { 
+              cx: 0,  // 圆心位置
+              cy: 0, 
+              r: 2    // 半径
+            },
+            style: { 
+              fill: baseColor, 
+              opacity: 0.9, 
+              shadowBlur: 20, 
+              shadowColor: baseColor,
+              // 添加描边效果
+              stroke: secondaryColor,
+              lineWidth: 1
+            },
             x: s.x,
             y: s.y,
+            rotation: angle, // 根据连线方向适度旋转
+            origin: [0, 0], // 旋转原点
             keyframeAnimation: {
-              duration,
-              delay,
+              duration: 2000 + (idx % 5) * 200,
+              delay: (idx * 100 + k * 400) % 1800,
               loop: true,
-              easing: "linear",
               keyframes: [
-                { percent: 0, x: s.x, y: s.y, style: { opacity: 0.0 } },
-                { percent: 0.12, x: s.x + (t.x - s.x) * 0.12, y: s.y + (t.y - s.y) * 0.12, style: { opacity: 0.95 } },
-                { percent: 1, x: t.x, y: t.y, style: { opacity: 0.0 } }
+                { percent: 0, x: s.x, y: s.y, style: { opacity: 0, shadowBlur: 5, fill: baseColor } },
+                { percent: 0.2, style: { opacity: 1, shadowBlur: 20, fill: secondaryColor } },
+                { percent: 0.5, style: { opacity: 0.9, shadowBlur: 15, fill: baseColor } },
+                { percent: 0.8, style: { opacity: 0.7, shadowBlur: 10 } },
+                { percent: 1, x: t.x, y: t.y, style: { opacity: 0, shadowBlur: 5, fill: secondaryColor } }
               ]
             }
           });
+          
+          // 添加拖尾效果
+          for (let trail = 0; trail < 2; trail++) {
+            const trailId = `${id}:trail${trail}`;
+            elements.push({
+              id: trailId,
+              type: "circle",
+              silent: true,
+              z: 99,
+              shape: { 
+                cx: 0, 
+                cy: 0, 
+                r: 1.5 - trail * 0.5
+              },
+              style: { 
+                fill: baseColor, 
+                opacity: 0.5 - trail * 0.2,
+                shadowBlur: 10, 
+                shadowColor: baseColor
+              },
+              x: s.x,
+              y: s.y,
+              rotation: angle,
+              origin: [0, 0],
+              keyframeAnimation: {
+                duration: 2000 + (idx % 5) * 200,
+                delay: (idx * 100 + k * 400 + trail * 50) % 1800,
+                loop: true,
+                keyframes: [
+                  { percent: 0, x: s.x, y: s.y, style: { opacity: 0 } },
+                  { percent: 0.1 + trail * 0.05, style: { opacity: 0.4 - trail * 0.2 } },
+                  { percent: 0.9, style: { opacity: 0.1 - trail * 0.05 } },
+                  { percent: 1, x: t.x, y: t.y, style: { opacity: 0 } }
+                ]
+              }
+            });
+          }
         }
       });
 
-      chart.setOption(
-        {
-          graphic: { elements }
-        },
-        { replaceMerge: ["graphic"] as any, lazyUpdate: true }
-      );
-    } catch {
-      // ignore
-    }
-  }, [props.enableEdgeFlow, props.edges, props.dimToPathEdgeIds]);
+      chart.setOption({ graphic: { elements } }, { replaceMerge: ["graphic"] as any });
+    } catch (e) { /* ignore */ }
+  }, [props.enableEdgeFlow, props.edges]);
 
-  // Smooth "fly-to" + pulse highlight when focusNodeId changes
-  React.useEffect(() => {
-    if (!props.focusNodeId) return;
-    const ref = chartRef.current;
-    const chart = ref?.getEchartsInstance?.();
-    if (!chart) return;
-
-    const node = props.nodes.find((n) => n.id === props.focusNodeId) || null;
-    if (!node) return;
-
-    // try to compute dx/dy to center the node (best-effort)
-    try {
-      const model: any = chart.getModel?.();
-      const series: any = model?.getSeriesByIndex?.(0);
-      const data: any = series?.getData?.();
-      const count: number = data?.count?.() ?? 0;
-      let found = -1;
-      for (let i = 0; i < count; i++) {
-        const id = data.getItemModel ? data.getItemModel(i)?.get("id") : data.getId?.(i);
-        if (id === node.id) {
-          found = i;
-          break;
-        }
-      }
-
-      if (found >= 0) {
-        const layout = data.getItemLayout(found);
-        const w = chart.getWidth();
-        const h = chart.getHeight();
-        const x = Array.isArray(layout) ? layout[0] : layout?.x;
-        const y = Array.isArray(layout) ? layout[1] : layout?.y;
-        if (typeof x === "number" && typeof y === "number") {
-          chart.dispatchAction({ type: "graphRoam", seriesIndex: 0, dx: w / 2 - x, dy: h / 2 - y, zoom: 1.15 });
-        }
-      }
-    } catch {}
-
-    // focus adjacency + tooltip
-    chart.dispatchAction({ type: "downplay", seriesIndex: 0 });
-    chart.dispatchAction({ type: "highlight", seriesIndex: 0, name: node.name });
-    chart.dispatchAction({ type: "focusNodeAdjacency", seriesIndex: 0, name: node.name });
-    chart.dispatchAction({ type: "showTip", seriesIndex: 0, name: node.name });
-
-    // pulse
-    let on = false;
-    const t = setInterval(() => {
-      on = !on;
-      chart.dispatchAction({ type: on ? "highlight" : "downplay", seriesIndex: 0, name: node.name });
-    }, 420);
-    return () => clearInterval(t);
-  }, [props.focusNodeId, props.nodes]);
-
-  // Keep particles in sync with layout + roam
+  // 自动重绘监听
   React.useEffect(() => {
     const chart = chartRef.current?.getEchartsInstance?.();
     if (!chart) return;
     let t: any = null;
     const schedule = () => {
       if (t) clearTimeout(t);
-      t = setTimeout(() => updateEdgeFlow(), 40);
+      t = setTimeout(() => updateEdgeFlow(), 30); // 提高更新频率
     };
-
-    // ECharts graph emits these
-    chart.on("finished", schedule);
     chart.on("graphRoam", schedule);
-    schedule();
-
+    chart.on("finished", schedule);
+    
+    // 初始启动动画
+    updateEdgeFlow();
+    
     return () => {
-      if (t) clearTimeout(t);
-      chart.off("finished", schedule);
       chart.off("graphRoam", schedule);
+      chart.off("finished", schedule);
+      if (t) clearTimeout(t);
     };
   }, [updateEdgeFlow]);
+  
+  // 添加固定时间间隔的动画更新
+  React.useEffect(() => {
+    if (!props.enableEdgeFlow) return;
+    
+    const timer = setInterval(updateEdgeFlow, 100);
+    return () => clearInterval(timer);
+  }, [props.enableEdgeFlow, updateEdgeFlow]);
 
   const option = React.useMemo(() => {
-    const data = props.nodes.map((n) => ({
-      id: n.id,
-      name: n.name,
-      value: n.domain,
-      symbolSize: 14 + Math.round((n.confidence ?? 0.7) * 20),
-      itemStyle: { color: colorFor(n.domain), shadowBlur: 24, shadowColor: "rgba(34,211,238,0.45)" },
-      emphasis: { itemStyle: { shadowBlur: 36, shadowColor: "rgba(99,102,241,0.75)" } },
-      label: { show: true, color: "rgba(226,232,240,0.85)", formatter: "{b}" }
-    }));
+    const data = props.nodes.map((n) => {
+      const isCentral = n.name === "Entropy" || n.domain === "Core";
+      const color = colorFor(n.domain);
+      
+      return {
+        id: n.id,
+        name: n.name,
+        symbolSize: isCentral ? 55 : 28 + (n.confidence || 0) * 15,
+        itemStyle: {
+          // 星球立体感：径向渐变
+          color: new echarts.graphic.RadialGradient(0.3, 0.3, 1, [
+            { offset: 0, color: "#fff" }, 
+            { offset: 0.2, color: color },
+            { offset: 1, color: "rgba(0,0,0,0.6)" }
+          ]),
+          shadowBlur: isCentral ? 40 : 15,
+          shadowColor: color,
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.3)",
+          // 添加呼吸灯效果
+          emphasis: {
+            shadowBlur: isCentral ? 60 : 30,
+            shadowColor: color,
+            animation: {
+              type: 'pulse',
+              duration: 2000,
+              easing: 'ease-in-out',
+              loop: true
+            }
+          }
+        },
+        label: {
+          show: true,
+          position: "bottom",
+          distance: 10,
+          color: "#e5e7eb",
+          fontSize: isCentral ? 14 : 11,
+          fontWeight: isCentral ? "bold" : "normal",
+          textShadowBlur: 4,
+          textShadowColor: color
+        },
+        // 添加入场动画
+        animationDelay: Math.random() * 1000,
+        animationDuration: 1500,
+        animationEasing: 'cubicOut'
+      };
+    });
 
-    const links = props.edges.map((e) => ({
-      source: e.source,
-      target: e.target,
-      value: e.relation,
-      lineStyle: {
-        width: 1.0 + Math.round((e.confidence ?? 0.7) * 4.0),
-        type: e.checked ? "solid" : "dashed",
-        color: (e.flags || []).includes("conflict") ? "#f59e0b" : e.checked ? "#22d3ee" : "#ef4444",
-        opacity: props.dimToPathEdgeIds
-          ? props.dimToPathEdgeIds.has(String(e.id ?? "")) ? 0.9 : 0.12
-          : e.checked ? 0.65 : 0.9
-      },
-      id: e.id ?? null,
-      relation: e.relation
-    }));
-
-    const categories = Array.from(new Set(props.nodes.map((n) => n.domain))).map((d) => ({
-      name: d,
-      itemStyle: { color: colorFor(d) }
-    }));
+    const links = props.edges.map((e, index) => {
+        const isHighlighted = props.dimToPathEdgeIds?.has(String(e.id));
+        const color = (e.flags || []).includes("conflict") ? "#ef4444" : "#22d3ee";
+        
+        return {
+          source: e.source,
+          target: e.target,
+          value: e.relation,
+          lineStyle: {
+            color: color,
+            width: isHighlighted ? 3 : 1.2,
+            opacity: props.dimToPathEdgeIds ? (isHighlighted ? 0.9 : 0.1) : 0.6,
+            curveness: 0.3, // 星轨弧度优化为0.3
+            shadowBlur: isHighlighted ? 15 : 8,
+            shadowColor: color,
+            // 添加脉冲动画效果
+            emphasis: {
+              width: isHighlighted ? 4 : 2,
+              opacity: 1,
+              shadowBlur: 25,
+              shadowColor: color,
+              animation: {
+                type: 'pulse',
+                duration: 1500,
+                easing: 'ease-in-out',
+                loop: true
+              }
+            }
+          },
+          // 使用自定义的科幻风格箭头路径
+          symbol: ["none", "path://M0,0 L12,6 L0,12 L3,6 Z"],
+          symbolSize: [0, 12],
+          // 为箭头添加发光效果
+          itemStyle: {
+            color: color,
+            shadowBlur: 15,
+            shadowColor: color
+          },
+          // 添加入场动画
+          animationDelay: 500 + index * 50,
+          animationDuration: 1500,
+          animationEasing: 'cubicOut'
+        };
+      });
 
     return {
+      backgroundColor: "transparent",
       tooltip: {
-        trigger: "item",
-        confine: true,
-        backgroundColor: "rgba(2,6,23,0.92)",
-        borderColor: "rgba(34,211,238,0.18)",
-        textStyle: { color: "rgba(226,232,240,0.92)" },
-        formatter: (p: any) => {
-          if (p?.dataType === "edge") {
-            const rel = p?.data?.relation ?? p?.data?.value ?? "";
-            const id = p?.data?.id ?? "";
-            const edge = props.edges.find((x) => String(x.id ?? "") === String(id));
-            const reason = edge?.check_reason || "";
-            const flags = (edge?.flags || []).join(", ");
-            return `<b>${rel}</b><br/>conf=${(edge?.confidence ?? 0).toFixed(2)} checked=${String(edge?.checked)}<br/>${flags ? `flags: ${flags}<br/>` : ""}${reason ? `reason: ${reason}` : ""}`;
-          }
-          return `<b>${p?.name ?? ""}</b><br/>${p?.value ?? ""}`;
-        }
+        show: true,
+        backgroundColor: "rgba(5, 8, 20, 0.9)",
+        borderColor: "rgba(34, 211, 238, 0.3)",
+        textStyle: { color: "#e5e7eb", fontSize: 12 }
       },
-      legend: [{ data: categories.map((c) => c.name) }],
-      animationDuration: 450,
-      graphic: { elements: [] },
       series: [
         {
           type: "graph",
           layout: "force",
+          force: {
+            repulsion: 800,
+            edgeLength: [120, 200],
+            gravity: 0.08
+          },
           roam: true,
           draggable: true,
-          label: { position: "right" },
-          force: { repulsion: 160, edgeLength: 90 },
+          emphasis: {
+            focus: "adjacency",
+            itemStyle: {
+              shadowBlur: 30,
+              shadowColor: "#22d3ee"
+            },
+            lineStyle: { 
+              width: 4, 
+              opacity: 1,
+              shadowBlur: 15,
+              shadowColor: "#22d3ee"
+            },
+            label: {
+              fontSize: 12,
+              fontWeight: "bold",
+              textShadowBlur: 8,
+              textShadowColor: "#22d3ee"
+            }
+          },
           data,
           links,
-          categories,
-          emphasis: { focus: "adjacency", lineStyle: { width: 3 } }
+          lineStyle: { curveness: 0.3 } // 保持与links中的curveness一致
         }
       ]
     };
@@ -253,20 +325,13 @@ export function GraphView(props: {
     <ReactECharts
       ref={chartRef}
       option={option}
-      style={{ height: 520, width: "100%" }}
+      style={{ height: "100%", width: "100%" }}
       onEvents={{
         click: (params: any) => {
-          if (params?.dataType === "node") {
-            props.onNodeClick?.(params.data?.id);
-            return;
-          }
-          if (params?.dataType === "edge") {
-            const d = params.data || {};
-            props.onEdgeClick?.(d.id ?? null, d.source, d.target, d.relation ?? d.value ?? "");
-          }
+          if (params.dataType === "node") props.onNodeClick?.(params.data.id);
+          if (params.dataType === "edge") props.onEdgeClick?.(params.data.id, params.data.source, params.data.target, params.data.value);
         }
       }}
     />
   );
 }
-
