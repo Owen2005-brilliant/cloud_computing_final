@@ -7,7 +7,7 @@
 在项目根目录执行：
 
 ```bash
-docker compose up -d --build
+docker compose -p xkg up -d --build
 ```
 
 启动后访问：
