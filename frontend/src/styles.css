@@ -287,6 +287,7 @@ body::after {
 
 .details-panel {
   width: 400px;
+  height: calc(100vh - 120px);
   background: var(--panel-glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -296,6 +297,26 @@ body::after {
   position: relative;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.details-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.details-panel::-webkit-scrollbar-track {
+  background: rgba(2, 6, 23, 0.2);
+  border-radius: 3px;
+}
+
+.details-panel::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.5);
+  border-radius: 3px;
+}
+
+.details-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(34, 211, 238, 0.7);
 }
 
 /* HUD decorative corners */
