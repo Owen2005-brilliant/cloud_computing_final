@@ -281,7 +281,36 @@ export function GraphView(props: {
         show: true,
         backgroundColor: "rgba(5, 8, 20, 0.9)",
         borderColor: "rgba(34, 211, 238, 0.3)",
-        textStyle: { color: "#e5e7eb", fontSize: 12 }
+        textStyle: { color: "#e5e7eb", fontSize: 12 },
+        padding: 8,
+        maxWidth: 200,
+        position: function(point: any, params: any, dom: any, rect: any, size: any) {
+          // 自定义tooltip位置，确保在可视区域内且不影响点击
+          const x = point[0];
+          const y = point[1];
+          const viewWidth = size.viewSize[0];
+          const viewHeight = size.viewSize[1];
+          const tooltipWidth = dom.offsetWidth;
+          const tooltipHeight = dom.offsetHeight;
+          
+          // 默认显示在鼠标右侧
+          let posX = x + 10;
+          let posY = y - tooltipHeight / 2;
+          
+          // 确保不超出右边界
+          if (posX + tooltipWidth > viewWidth) {
+            posX = x - tooltipWidth - 10;
+          }
+          
+          // 确保不超出上下边界
+          if (posY < 0) {
+            posY = 0;
+          } else if (posY + tooltipHeight > viewHeight) {
+            posY = viewHeight - tooltipHeight;
+          }
+          
+          return [posX, posY];
+        }
       },
       series: [
         {

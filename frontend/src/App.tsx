@@ -1,6 +1,8 @@
 import React from "react";
 import { expandNode, generateGraph, getGraph, getJob, type Edge, type GraphResult, type JobStatus, type Node } from "./api";
 import { GraphView } from "./components/GraphView";
+import { EntityCard } from "./components/EntityCard";
+import { RelationGraph } from "./components/RelationGraph";
 import { motion } from "framer-motion";
 
 function sleep(ms: number) {
@@ -531,78 +533,169 @@ export function App() {
       {/* 详情面板 */}
       <aside className="details-panel">
         {selectedNode ? (
-          <>
-            <span className="pill">KNOWLEDGE NODE</span>
-            <h1 className="title">{selectedNode.name}</h1>
-            <div className="kv">
-              <div>Confidence</div>
-              <div>{selectedNode.confidence.toFixed(2)}</div>
-              <div>Domain</div>
-              <div>{selectedNode.domain}</div>
-              <div>Definition</div>
-              <div>{selectedNode.definition || "-"}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px", height: "100%" }}>
+            <EntityCard 
+              node={selectedNode} 
+              edges={graph?.edges || []} 
+              onClose={() => setSelectedNode(null)} 
+              onExpand={onExpand} 
+              busy={busy} 
+              style={{ flex: 1.5 }}
+            />
+            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <h2 style={{
+                fontSize: "16px",
+                color: "#22d3ee",
+                marginBottom: "12px",
+                borderBottom: "1px solid rgba(34, 211, 238, 0.1)",
+                paddingBottom: "6px"
+              }}>
+                Relationship Graph
+              </h2>
+              <div style={{ flex: 1 }}>
+                <RelationGraph 
+                  selectedNode={selectedNode} 
+                  nodes={graph?.nodes || []} 
+                  edges={graph?.edges || []} 
+                />
+              </div>
             </div>
-            <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-              <button onClick={onExpand} disabled={busy}>
-                Expand (2‑hop)
-              </button>
-            </div>
-          </>
+          </div>
         ) : selectedEdge ? (
-          <>
-            <span className="pill">RELATION</span>
-            <h1 className="title">{selectedEdge.relation}</h1>
-            <div className="subtle" style={{ marginBottom: 16 }}>
-              {selectedEdge.source} → {selectedEdge.target}
+          <div style={{ backgroundColor: "rgba(2, 6, 23, 0.9)", borderRadius: "12px", border: "1px solid rgba(34, 211, 238, 0.2)", padding: "20px", color: "#e5e7eb" }}>
+            <div style={{ marginBottom: "20px" }}>
+              <span className="pill" style={{
+                backgroundColor: "rgba(34, 211, 238, 0.1)",
+                color: "#22d3ee",
+                padding: "4px 8px",
+                borderRadius: "12px",
+                fontSize: "11px",
+                fontWeight: "bold",
+                textTransform: "uppercase"
+              }}>
+                RELATION
+              </span>
+              <h1 className="title" style={{ fontSize: "24px", color: "#ffffff", margin: "8px 0 0 0" }}>
+                {selectedEdge.relation.replace("_", " ")}
+              </h1>
+              <div style={{ color: "#94a3b8", marginTop: "4px" }}>
+                {selectedEdge.source} → {selectedEdge.target}
+              </div>
             </div>
 
-            {/* 证据卡片重构 */}
-            {(selectedEdge.evidence?.snippet || "").split("\n").filter((x) => x.trim()).slice(0, 3).map((sn, i) => {
-              // 模拟一个置信度分数
-              const score = selectedEdge.confidence * (1 - i * 0.1);
-              const percentage = Math.round(score * 100);
-              
-              return (
-                <motion.div
-                  key={i}
-                  className="evidenceCard"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: i * 0.1 }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span style={{ fontWeight: 'bold' }}>Evidence {i + 1}</span>
-                    <span style={{ color: 'var(--cyan)' }}>{percentage}% Conf.</span>
-                  </div>
-                  <div className="progress-bg">
-                    <div className="progress-fill" style={{ width: `${percentage}%` }}></div>
-                  </div>
-                  <div style={{ marginTop: 12, fontSize: '13px', color: 'rgba(248, 250, 252, 0.7)' }}>
-                    {sn}
-                  </div>
-                </motion.div>
-              );
-            })}
+            {/* 证据卡片 */}
+            <div style={{ marginBottom: "20px" }}>
+              <h2 style={{
+                fontSize: "16px",
+                color: "#22d3ee",
+                marginBottom: "12px",
+                borderBottom: "1px solid rgba(34, 211, 238, 0.1)",
+                paddingBottom: "6px"
+              }}>
+                Evidence
+              </h2>
+              {(selectedEdge.evidence?.snippet || "").split("\n").filter((x) => x.trim()).slice(0, 3).map((sn, i) => {
+                const score = selectedEdge.confidence * (1 - i * 0.1);
+                const percentage = Math.round(score * 100);
+                
+                return (
+                  <motion.div
+                    key={i}
+                    style={{
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      padding: "12px",
+                      borderRadius: "8px",
+                      marginBottom: "8px"
+                    }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: i * 0.1 }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontWeight: 'bold', color: '#ffffff' }}>Evidence {i + 1}</span>
+                      <span style={{ color: '#22d3ee', fontSize: '12px' }}>{percentage}% Confidence</span>
+                    </div>
+                    <div style={{ height: '4px', backgroundColor: 'rgba(255, 255, 255, 0.1)', borderRadius: '2px', marginBottom: '12px' }}>
+                      <div style={{ height: '100%', width: `${percentage}%`, backgroundColor: '#22d3ee', borderRadius: '2px' }} />
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#cbd5e1' }}>
+                      {sn}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
             
-            <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
-              <button className="btn-ghost" onClick={copyCitation}>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button 
+                className="btn-ghost" 
+                onClick={copyCitation}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(34, 211, 238, 0.2)",
+                  backgroundColor: "transparent",
+                  color: "#22d3ee",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  transition: "all 0.2s ease"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "rgba(34, 211, 238, 0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+              >
                 Copy citation
               </button>
               {selectedEdge.evidence?.url && (
-                <a className="chip" href={selectedEdge.evidence.url} target="_blank" rel="noreferrer">
+                <a 
+                  href={selectedEdge.evidence.url} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "8px",
+                    backgroundColor: "rgba(34, 211, 238, 0.1)",
+                    color: "#22d3ee",
+                    textDecoration: "none",
+                    fontSize: "14px",
+                    border: "1px solid rgba(34, 211, 238, 0.2)",
+                    transition: "all 0.2s ease"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "rgba(34, 211, 238, 0.2)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "rgba(34, 211, 238, 0.1)";
+                  }}
+                >
                   Open source
                 </a>
               )}
             </div>
-          </>
+          </div>
         ) : (
-          <>
-            <span className="pill">READY</span>
-            <h1 className="title">Graph Explorer</h1>
-            <div className="muted" style={{ marginTop: 12 }}>
+          <div style={{ backgroundColor: "rgba(2, 6, 23, 0.9)", borderRadius: "12px", border: "1px solid rgba(34, 211, 238, 0.2)", padding: "40px 20px", textAlign: "center", color: "#e5e7eb" }}>
+            <span className="pill" style={{
+              backgroundColor: "rgba(34, 211, 238, 0.1)",
+              color: "#22d3ee",
+              padding: "4px 8px",
+              borderRadius: "12px",
+              fontSize: "11px",
+              fontWeight: "bold",
+              textTransform: "uppercase"
+            }}>
+              READY
+            </span>
+            <h1 style={{ fontSize: "24px", color: "#ffffff", margin: "16px 0 8px 0" }}>
+              Graph Explorer
+            </h1>
+            <div style={{ color: "#94a3b8" }}>
               Select a node or edge to view details and evidence.
             </div>
-          </>
+          </div>
         )}
 
         {/* Job Logs */}
