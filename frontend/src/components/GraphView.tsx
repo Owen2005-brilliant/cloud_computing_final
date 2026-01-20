@@ -202,16 +202,23 @@ export function GraphView(props: {
           shadowColor: color,
           borderWidth: 1,
           borderColor: "rgba(255,255,255,0.3)",
-          // 添加呼吸灯效果
+          // 添加丰富的动态效果
           emphasis: {
-            shadowBlur: isCentral ? 60 : 30,
-            shadowColor: color,
+            shadowBlur: isCentral ? 80 : 50,
+            shadowColor: `${color}80`, // 增加透明度
+            borderWidth: 3,
+            borderColor: color,
+            // 脉冲动画
             animation: {
               type: 'pulse',
               duration: 2000,
               easing: 'ease-in-out',
               loop: true
-            }
+            },
+            // 发光边框动画
+            animationDelay: 0,
+            animationDuration: 1000,
+            animationEasing: 'ease-out'
           }
         },
         label: {
@@ -223,7 +230,24 @@ export function GraphView(props: {
           textShadowBlur: 4,
           textShadowColor: color,
           align: "center",
-          verticalAlign: "middle"
+          verticalAlign: "middle",
+          emphasis: {
+            color: "#ffffff",
+            fontSize: isCentral ? 16 : 13,
+            fontWeight: "bold",
+            textShadowBlur: 10,
+            textShadowColor: `${color}FF`,
+            animation: {
+              type: 'scale',
+              duration: 300,
+              easing: 'ease-out'
+            }
+          }
+        },
+        emphasis: {
+          label: {
+            show: true
+          }
         },
         // 添加入场动画
         animationDelay: Math.random() * 1000,

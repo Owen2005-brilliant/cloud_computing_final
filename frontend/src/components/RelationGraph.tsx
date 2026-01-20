@@ -63,9 +63,21 @@ export function RelationGraph({ selectedNode, nodes, edges }: RelationGraphProps
         shadowBlur: isSelected ? 40 : 15,
         shadowColor: colorFor(node.domain),
         emphasis: {
-          shadowBlur: isSelected ? 60 : 30,
-          shadowColor: colorFor(node.domain),
-          animation: { type: 'pulse', duration: 2000, easing: 'ease-in-out', loop: true }
+          shadowBlur: isSelected ? 80 : 50,
+          shadowColor: `${colorFor(node.domain)}80`, // 增加透明度
+          borderWidth: 3,
+          borderColor: colorFor(node.domain),
+          // 脉冲动画
+          animation: {
+            type: 'pulse',
+            duration: 2000,
+            easing: 'ease-in-out',
+            loop: true
+          },
+          // 发光边框动画
+          animationDelay: 0,
+          animationDuration: 1000,
+          animationEasing: 'ease-out'
         }
       },
       label: {
@@ -85,7 +97,14 @@ export function RelationGraph({ selectedNode, nodes, edges }: RelationGraphProps
           color: "#ffffff",
           fontSize: isSelected ? 16 : 14,
           fontWeight: 'bold',
-          lineHeight: 20
+          lineHeight: 20,
+          textShadowBlur: 10,
+          textShadowColor: `${colorFor(node.domain)}FF`,
+          animation: {
+            type: 'scale',
+            duration: 300,
+            easing: 'ease-out'
+          }
         }
       },
       value: 1,
