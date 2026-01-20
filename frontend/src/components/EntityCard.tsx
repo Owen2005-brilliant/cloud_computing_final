@@ -72,7 +72,7 @@ export function EntityCard({ node, edges, onClose, onExpand, busy, style }: Enti
             fontSize: "20px",
             color: "#ffffff"
           }}>
-            {node.name}
+            {node.name.replace(/\s*\([^\)]*\)\s*.*$/g, '')}
           </h1>
         </div>
         <button 

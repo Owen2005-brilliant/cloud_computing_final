@@ -51,8 +51,9 @@ export function RelationGraph({ selectedNode, nodes, edges }: RelationGraphProps
     const isSelected = node.id === selectedNode.id;
     return {
       id: node.id,
-      name: node.name,
-      symbolSize: isSelected ? 60 : 30,
+      name: node.name.replace(/\s*\([^\)]*\)\s*.*$/g, '')
+        .replace(/\s*in\s+[a-zA-Z\s]+(?:\([a-zA-Z\s]+\))?$/i, ''),
+      symbolSize: isSelected ? 80 : 40,
       itemStyle: {
         color: new echarts.graphic.RadialGradient(0.3, 0.3, 1, [
           { offset: 0, color: "#fff" },
@@ -69,15 +70,18 @@ export function RelationGraph({ selectedNode, nodes, edges }: RelationGraphProps
       },
       label: {
         show: true,
-        formatter: node.name,
+        formatter: `${node.name.replace(/\s*\([^\)]*\)\s*.*$/g, '').replace(/\s*in\s+[a-zA-Z\s]+(?:\([a-zA-Z\s]+\))?$/i, '')} (${node.domain})`,
+        position: "inside",
         color: "#ffffff",
         fontSize: isSelected ? 14 : 12,
-        fontWeight: isSelected ? 'bold' : 'normal'
+        fontWeight: isSelected ? 'bold' : 'normal',
+        align: "center",
+        verticalAlign: "middle"
       },
       emphasis: {
         label: {
           show: true,
-          formatter: `{b}\n{@domain}`,
+          formatter: `{b}\n${node.domain}`,
           color: "#ffffff",
           fontSize: isSelected ? 16 : 14,
           fontWeight: 'bold',

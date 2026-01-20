@@ -183,13 +183,14 @@ export function GraphView(props: {
 
   const option = React.useMemo(() => {
     const data = props.nodes.map((n) => {
-      const isCentral = n.name === "Entropy" || n.domain === "Core";
+      const baseName = n.name.replace(/\s*\([^)]*\)\s*.*$/g, '').replace(/\s*in\s+[a-zA-Z\s]+(?:\([a-zA-Z\s]+\))?$/i, '');
+      const isCentral = baseName === "Entropy" || n.domain === "Core";
       const color = colorFor(n.domain);
       
       return {
         id: n.id,
-        name: n.name,
-        symbolSize: isCentral ? 55 : 28 + (n.confidence || 0) * 15,
+        name: `${baseName} (${n.domain})`,
+        symbolSize: isCentral ? 70 : 35 + (n.confidence || 0) * 20,
         itemStyle: {
           // 星球立体感：径向渐变
           color: new echarts.graphic.RadialGradient(0.3, 0.3, 1, [
@@ -215,13 +216,14 @@ export function GraphView(props: {
         },
         label: {
           show: true,
-          position: "bottom",
-          distance: 10,
+          position: "inside",
           color: "#e5e7eb",
           fontSize: isCentral ? 14 : 11,
           fontWeight: isCentral ? "bold" : "normal",
           textShadowBlur: 4,
-          textShadowColor: color
+          textShadowColor: color,
+          align: "center",
+          verticalAlign: "middle"
         },
         // 添加入场动画
         animationDelay: Math.random() * 1000,
