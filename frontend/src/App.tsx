@@ -314,8 +314,9 @@ export function App() {
   }
 
   return (
-    <div className="app">
-      <div className="topbar">
+    <div className="layout">
+      {/* 顶部控制栏 - 保留现有功能 */}
+      <div className="topbar" style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 100 }}>
         <div className="brand">
           <div className="logo" />
           <div>
@@ -376,56 +377,93 @@ export function App() {
         </div>
       </div>
 
-      <div className="hud">
-        <div className="card">
-          <div className="panelHeader">
-            <div className="title">Filters</div>
-            <span className="subtle">Validation & Domains</span>
+      {/* 主图表容器 */}
+      <main className="graph-container" style={{ position: "relative" }}>
+        {/* 扫描线效果 */}
+        <div className="scanline" />
+        
+        {graph ? (
+          <GraphView
+            nodes={filtered.nodes}
+            edges={filtered.edges}
+            onNodeClick={pickNode}
+            onEdgeClick={pickEdge}
+            focusNodeId={focusNodeId}
+            dimToPathEdgeIds={pathMode && pathEdgeIds ? pathEdgeIds : undefined}
+            enableEdgeFlow={true}
+          />
+        ) : (
+          <div className="muted" style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", fontSize: 18 }}>
+            Click Generate to render graph.
           </div>
+        )}
 
-          {showFilters ? (
-            <>
-              <div className="muted">Domain</div>
-              <div className="chips">
-                {Array.from(new Set(graph?.nodes.map((n) => n.domain) || [])).map((d) => (
-                  <div
-                    key={d}
-                    className={"chip " + (domainFilter.has(d) ? "active" : "")}
-                    onClick={() => {
-                      const next = new Set(domainFilter);
-                      if (next.has(d)) next.delete(d);
-                      else next.add(d);
-                      setDomainFilter(next);
-                    }}
-                  >
-                    {d}
-                  </div>
-                ))}
-              </div>
+        {/* 路径模式控制 */}
+        {pathMode && (
+          <div style={{ position: "absolute", bottom: 20, left: 20, zIndex: 10 }} className="controls">
+            <span className="pill">Path mode</span>
+            <span className="muted">
+              {pathStart ? "Pick an end node" : "Pick a start node"} {pathEnd ? "• Path ready" : ""}
+            </span>
+            <button className="btn-ghost" onClick={clearPath}>
+              Clear
+            </button>
+            <button onClick={startPlay} disabled={!pathNodes.length}>
+              Play
+            </button>
+          </div>
+        )}
 
-              <div className="divider" />
-              <div className="muted">Relation</div>
-              <div className="chips">
-                {["related_to", "used_in", "is_a", "explains", "bridges"].map((r) => (
-                  <div
-                    key={r}
-                    className={"chip " + (relationFilter.has(r) ? "active" : "")}
-                    onClick={() => {
-                      const next = new Set(relationFilter);
-                      if (next.has(r)) next.delete(r);
-                      else next.add(r);
-                      setRelationFilter(next);
-                    }}
-                  >
-                    {r}
-                  </div>
-                ))}
-              </div>
+        {/* 过滤器面板 */}
+        {showFilters && graph && (
+          <div className="card" style={{ position: "absolute", top: 80, left: 20, width: 280, zIndex: 50 }}>
+            <div className="panelHeader">
+              <div className="title">Filters</div>
+              <span className="subtle">Validation & Domains</span>
+            </div>
 
-              <div className="divider" />
-              <div className="muted">Checked</div>
-              <div className="chips">
-                {[
+            <div className="muted">Domain</div>
+            <div className="chips">
+              {Array.from(new Set(graph?.nodes.map((n) => n.domain) || [])).map((d) => (
+                <div
+                  key={d}
+                  className={"chip " + (domainFilter.has(d) ? "active" : "")}
+                  onClick={() => {
+                    const next = new Set(domainFilter);
+                    if (next.has(d)) next.delete(d);
+                    else next.add(d);
+                    setDomainFilter(next);
+                  }}
+                >
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            <div className="divider" />
+            <div className="muted">Relation</div>
+            <div className="chips">
+              {["related_to", "used_in", "is_a", "explains", "bridges"].map((r) => (
+                <div
+                  key={r}
+                  className={"chip " + (relationFilter.has(r) ? "active" : "")}
+                  onClick={() => {
+                    const next = new Set(relationFilter);
+                    if (next.has(r)) next.delete(r);
+                    else next.add(r);
+                    setRelationFilter(next);
+                  }}
+                >
+                  {r}
+                </div>
+              ))}
+            </div>
+
+            <div className="divider" />
+            <div className="muted">Checked</div>
+            <div className="chips">
+              {
+                [
                   ["all", "All"],
                   ["pass", "Pass"],
                   ["fail", "Fail"],
@@ -438,228 +476,144 @@ export function App() {
                   >
                     {label}
                   </div>
-                ))}
-              </div>
+                ))
+              }
+            </div>
 
-              <div className="divider" />
-              <div className="muted">Confidence ≥ {confMin.toFixed(2)}</div>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={confMin}
-                onChange={(e) => setConfMin(Number(e.target.value))}
-              />
+            <div className="divider" />
+            <div className="muted">Confidence ≥ {confMin.toFixed(2)}</div>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={confMin}
+              onChange={(e) => setConfMin(Number(e.target.value))}
+            />
 
-              <div className="controls" style={{ marginTop: 12 }}>
-                <button
-                  className="btn-ghost"
-                  onClick={() => {
-                    setDomainFilter(new Set());
-                    setRelationFilter(new Set());
-                    setCheckedFilter("all");
-                    setConfMin(0);
-                  }}
-                >
-                  Reset
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="muted">Click “Filter” to expand controls.</div>
-          )}
+            <div className="controls" style={{ marginTop: 12 }}>
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  setDomainFilter(new Set());
+                  setRelationFilter(new Set());
+                  setCheckedFilter("all");
+                  setConfMin(0);
+                }}
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        )}
 
-          {agentTrace ? (
-            <>
-              <div className="divider" />
-              <div className="title">Agent Trace</div>
-              <div className="subtle">Planner concepts + selected evidence snippets</div>
-              <div className="traceBox" style={{ marginTop: 10 }}>
-                {Object.entries(agentTrace.domains || {}).map(([d, qs]) => (
-                  <div key={d} className="traceDomain">
-                    <div className="traceTitle">{d}</div>
-                    <div className="muted" style={{ fontSize: 12 }}>
-                      Queries: {(qs || []).slice(0, 6).join(" · ")}
-                    </div>
-                    {(agentTrace.passages_by_domain?.[d] || []).slice(0, 2).map((p, i) => (
-                      <div key={i} className="traceItem">
-                        <div className="t">
-                          <span className="pill">{p.source || "source"}</span>{" "}
-                          {p.title}
-                        </div>
-                        <div className="s">{(p.snippet || "").slice(0, 220)}</div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : null}
+        {/* 进度指示器 */}
+        {job && (
+          <div className="card glass" style={{ position: "absolute", top: 80, right: 20, width: 300, zIndex: 50 }}>
+            <div className="muted">Progress</div>
+            <div className="progress">
+              <div style={{ width: `${job.progress}%` }} />
+            </div>
+            {job && <div className="subtle" style={{ marginTop: 6 }}>{job.message || "Running…"}</div>}
+          </div>
+        )}
 
-          {job && (
-            <>
-              <div className="divider" />
-              <div className="muted">Progress</div>
-              <div className="progress">
-                <div style={{ width: `${job.progress}%` }} />
-              </div>
-              {job && <div className="subtle" style={{ marginTop: 6 }}>{job.message || "Running…"}</div>}
-            </>
-          )}
-
-          {error && (
-            <div style={{ marginTop: 10, color: "#fca5a5" }}>
+        {/* 错误信息 */}
+        {error && (
+          <div className="card" style={{ position: "absolute", bottom: 20, right: 20, zIndex: 50, backgroundColor: "rgba(239, 68, 68, 0.1)" }}>
+            <div style={{ color: "#fca5a5" }}>
               <b>Error:</b> {error}
             </div>
-          )}
-        </div>
-
-        <div className="card">
-          <div className="panelHeader">
-            <div className="title">Graph</div>
-            {graph ? (
-              <div className="insights">
-                <div className="metric">
-                  <div className="k">Nodes</div>
-                  <div className="v">{insights.nodeCount}</div>
-                </div>
-                <div className="metric">
-                  <div className="k">Links</div>
-                  <div className="v">{insights.edgeCount}</div>
-                </div>
-                <div className="metric">
-                  <div className="k">Pass Rate</div>
-                  <div className="v">{insights.passRate}%</div>
-                </div>
-                <div className="metric">
-                  <div className="k">Bridges</div>
-                  <div className="v">{filtered.edges.filter((e) => e.relation === "bridges").length}</div>
-                </div>
-                <div className="metric">
-                  <div className="k">Top Domain</div>
-                  <div className="v" style={{ fontSize: 14 }}>{insights.topDomain}</div>
-                </div>
-              </div>
-            ) : (
-              <span className="subtle">No graph yet</span>
-            )}
           </div>
-
-          {graph ? (
-            <GraphView
-              nodes={filtered.nodes}
-              edges={filtered.edges}
-              onNodeClick={pickNode}
-              onEdgeClick={pickEdge}
-              focusNodeId={focusNodeId}
-              dimToPathEdgeIds={pathMode && pathEdgeIds ? pathEdgeIds : undefined}
-              enableEdgeFlow={true}
-            />
-          ) : (
-            <div className="muted">Click Generate to render graph.</div>
-          )}
-
-          {pathMode ? (
-            <div style={{ marginTop: 10 }} className="controls">
-              <span className="pill">Path mode</span>
-              <span className="muted">
-                {pathStart ? "Pick an end node" : "Pick a start node"} {pathEnd ? "• Path ready" : ""}
-              </span>
-              <button className="btn-ghost" onClick={clearPath}>
-                Clear
-              </button>
-              <button onClick={startPlay} disabled={!pathNodes.length}>
-                Play
+        )}
+      </main>
+      
+      {/* 详情面板 */}
+      <aside className="details-panel">
+        {selectedNode ? (
+          <>
+            <span className="pill">KNOWLEDGE NODE</span>
+            <h1 className="title">{selectedNode.name}</h1>
+            <div className="kv">
+              <div>Confidence</div>
+              <div>{selectedNode.confidence.toFixed(2)}</div>
+              <div>Domain</div>
+              <div>{selectedNode.domain}</div>
+              <div>Definition</div>
+              <div>{selectedNode.definition || "-"}</div>
+            </div>
+            <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
+              <button onClick={onExpand} disabled={busy}>
+                Expand (2‑hop)
               </button>
             </div>
-          ) : null}
-        </div>
+          </>
+        ) : selectedEdge ? (
+          <>
+            <span className="pill">RELATION</span>
+            <h1 className="title">{selectedEdge.relation}</h1>
+            <div className="subtle" style={{ marginBottom: 16 }}>
+              {selectedEdge.source} → {selectedEdge.target}
+            </div>
 
-        <div className="card">
-          <div className="panelHeader">
-            <div className="title">{selectedEdge ? "Details" : selectedNode ? "Node" : "Details"}</div>
-            {selectedNode ? <span className="pill">{selectedNode.domain}</span> : null}
+            {/* 证据卡片重构 */}
+            {(selectedEdge.evidence?.snippet || "").split("\n").filter((x) => x.trim()).slice(0, 3).map((sn, i) => {
+              // 模拟一个置信度分数
+              const score = selectedEdge.confidence * (1 - i * 0.1);
+              const percentage = Math.round(score * 100);
+              
+              return (
+                <motion.div
+                  key={i}
+                  className="evidenceCard"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: i * 0.1 }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontWeight: 'bold' }}>Evidence {i + 1}</span>
+                    <span style={{ color: 'var(--cyan)' }}>{percentage}% Conf.</span>
+                  </div>
+                  <div className="progress-bg">
+                    <div className="progress-fill" style={{ width: `${percentage}%` }}></div>
+                  </div>
+                  <div style={{ marginTop: 12, fontSize: '13px', color: 'rgba(248, 250, 252, 0.7)' }}>
+                    {sn}
+                  </div>
+                </motion.div>
+              );
+            })}
+            
+            <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
+              <button className="btn-ghost" onClick={copyCitation}>
+                Copy citation
+              </button>
+              {selectedEdge.evidence?.url && (
+                <a className="chip" href={selectedEdge.evidence.url} target="_blank" rel="noreferrer">
+                  Open source
+                </a>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <span className="pill">READY</span>
+            <h1 className="title">Graph Explorer</h1>
+            <div className="muted" style={{ marginTop: 12 }}>
+              Select a node or edge to view details and evidence.
+            </div>
+          </>
+        )}
+
+        {/* Job Logs */}
+        {job?.logs?.length && (
+          <div style={{ marginTop: 20 }}>
+            <div className="divider" />
+            <div className="title">Job Logs</div>
+            <div className="log">{job.logs.slice(-40).join("\n")}</div>
           </div>
-
-          <div className="detailsScroll">
-            {selectedEdge ? (
-            <>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                <span className="pill">{selectedEdge.relation}</span>
-                {(selectedEdge.flags || []).includes("conflict") && <span className="pill warn">⚠ conflict</span>}
-                {(selectedEdge.flags || []).includes("duplicate") && <span className="pill">duplicate</span>}
-                {(selectedEdge.flags || []).includes("downgraded") && <span className="pill">downgraded</span>}
-                {!selectedEdge.checked && <span className="pill bad">failed</span>}
-                <span className="muted">
-                  conf={selectedEdge.confidence.toFixed(2)} · {selectedEdge.check_reason || "—"}
-                </span>
-              </div>
-
-              <div style={{ marginTop: 10 }} className="controls">
-                <button className="btn-ghost" onClick={copyCitation}>
-                  Copy citation
-                </button>
-                {selectedEdge.evidence?.url ? (
-                  <a className="chip" href={selectedEdge.evidence.url} target="_blank" rel="noreferrer">
-                    Open source
-                  </a>
-                ) : null}
-              </div>
-
-              <div className="stack" style={{ marginTop: 12 }}>
-                {(selectedEdge.evidence?.snippet || "")
-                  .split("\n")
-                  .filter((x) => x.trim())
-                  .slice(0, 4)
-                  .map((sn, i) => (
-                    <motion.div
-                      key={i}
-                      className="evidenceCard"
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.18 }}
-                    >
-                      <div className="title2">{selectedEdge.evidence?.title || "Evidence"}</div>
-                      <div className="meta2">
-                        {selectedEdge.evidence?.domain ? <span className="pill">{selectedEdge.evidence.domain}</span> : null}
-                        <span className="pill">score≈{selectedEdge.confidence.toFixed(2)}</span>
-                      </div>
-                      <div className="snippet2">{sn}</div>
-                    </motion.div>
-                  ))}
-              </div>
-            </>
-            ) : selectedNode ? (
-            <>
-              <div style={{ fontSize: 18, fontWeight: 700, marginTop: 8 }}>{selectedNode.name}</div>
-              <div className="kv">
-                <div>Confidence</div>
-                <div>{selectedNode.confidence.toFixed(2)}</div>
-                <div>Definition</div>
-                <div>{selectedNode.definition || "-"}</div>
-              </div>
-              <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-                <button onClick={onExpand} disabled={busy}>
-                  Expand (2‑hop)
-                </button>
-              </div>
-            </>
-            ) : (
-            <div className="muted">Click a node or edge to inspect details.</div>
-            )}
-          </div>
-
-          {job?.logs?.length ? (
-            <>
-              <div className="divider" />
-              <div className="title">Job Logs</div>
-              <div className="log">{job.logs.slice(-40).join("\n")}</div>
-            </>
-          ) : null}
-        </div>
-      </div>
+        )}
+      </aside>
     </div>
   );
 }
-
